@@ -1,6 +1,6 @@
 # Rio — AI Dost (Hinglish Chatbot)
 
-A web chatbot inspired by [rumik.ai's Ira](https://rumik.ai). Chats in Hinglish, detects emotion + intent, and remembers facts about you across conversations.
+A web chatbot inspired by [rio.ai](https://rio.ai). Chats in Hinglish, detects emotion + intent, and remembers facts about you across conversations.
 
 **Stack:** React (Vite) + Node.js (Express) + SQLite (built-in `node:sqlite`) + OpenAI GPT-4o **or** Groq (switch via env var).
 
