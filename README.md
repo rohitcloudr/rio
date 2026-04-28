@@ -88,6 +88,7 @@ The "Memories" sidebar shows what Rio has chosen to remember. Click × to forget
 | `DELETE` | `/api/memory/:id` | delete one memory |
 | `GET` | `/api/health` | `{ok: true}` |
 
+<<<<<<< HEAD
 ## Database — local SQLite or cloud Supabase
 
 Set `DB_DRIVER` in `backend/.env`:
@@ -122,10 +123,13 @@ DB_DRIVER=supabase   # cloud Postgres (requires SUPABASE_URL + service_role key)
 
 > ⚠ **Use the service_role / secret key only**, not the publishable/anon key. RLS is enabled; the publishable key won't have access. The secret key bypasses RLS — keep it server-side only.
 
+=======
+>>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
 ## Files
 
 ```
 backend/
+<<<<<<< HEAD
   server.js        — Express routes
   rio.js           — LLM orchestration, system prompt, JSON shape
   db.js            — router (picks sqlite or supabase by DB_DRIVER)
@@ -135,6 +139,15 @@ backend/
 frontend/
   src/App.jsx — entire chat UI + theme + model picker
   src/App.css — light/dark theme styles
+=======
+  server.js   — Express routes
+  db.js       — SQLite schema + queries
+  rio.js      — LLM orchestration, system prompt, JSON shape
+  data/rio.db — auto-created SQLite file (gitignored)
+frontend/
+  src/App.jsx — entire chat UI
+  src/App.css — styles
+>>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
 ```
 
 ## Not included (yet)

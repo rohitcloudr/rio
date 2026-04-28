@@ -130,17 +130,26 @@ function resolveProvider(providerName) {
 }
 
 export async function talkToRio(userId, userMessage, providerName = null, modelOverride = null) {
+<<<<<<< HEAD
   await ensureUser(userId);
+=======
+  ensureUser(userId);
+>>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
 
   const { name, config, apiKey } = resolveProvider(providerName);
   const model = modelOverride || config.defaultModel;
 
   const client = new OpenAI({ apiKey, baseURL: config.baseURL });
 
+<<<<<<< HEAD
   const [recent, memories] = await Promise.all([
     getRecentMessages(userId, 10),
     getTopMemories(userId, 15),
   ]);
+=======
+  const recent = getRecentMessages(userId, 10);
+  const memories = getTopMemories(userId, 15);
+>>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
 
   const messages = [
     { role: 'system', content: SYSTEM_PROMPT },
@@ -170,14 +179,22 @@ export async function talkToRio(userId, userMessage, providerName = null, modelO
   const raw = completion.choices[0]?.message?.content ?? '{}';
   const parsed = parseAndNormalize(raw);
 
+<<<<<<< HEAD
   await saveMessage({
+=======
+  saveMessage({
+>>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
     userId,
     role: 'user',
     content: userMessage,
     emotion: parsed.emotion,
     intent: parsed.intent,
   });
+<<<<<<< HEAD
   await saveMessage({
+=======
+  saveMessage({
+>>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
     userId,
     role: 'assistant',
     content: parsed.reply,
@@ -185,7 +202,11 @@ export async function talkToRio(userId, userMessage, providerName = null, modelO
 
   let memorySaved = false;
   if (parsed.memory && typeof parsed.memory.fact === 'string' && parsed.memory.fact.trim()) {
+<<<<<<< HEAD
     await saveMemory({
+=======
+    saveMemory({
+>>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
       userId,
       fact: parsed.memory.fact,
       importance: Number(parsed.memory.importance) || 3,

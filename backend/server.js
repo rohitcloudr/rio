@@ -46,6 +46,7 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
+<<<<<<< HEAD
 app.get('/api/conversation/:userId', async (req, res) => {
   try {
     const messages = await getAllMessages(req.params.userId, 50);
@@ -76,6 +77,23 @@ app.delete('/api/memory/:id', async (req, res) => {
     console.error('[delete memory error]', err);
     res.status(500).json({ error: err?.message ?? 'unknown error' });
   }
+=======
+app.get('/api/conversation/:userId', (req, res) => {
+  const messages = getAllMessages(req.params.userId, 50);
+  res.json({ messages });
+});
+
+app.get('/api/memory/:userId', (req, res) => {
+  const memories = getTopMemories(req.params.userId, 100);
+  res.json({ memories });
+});
+
+app.delete('/api/memory/:id', (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return res.status(400).json({ error: 'invalid id' });
+  deleteMemory(id);
+  res.json({ ok: true });
+>>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
 });
 
 const PORT = Number(process.env.PORT) || 8787;

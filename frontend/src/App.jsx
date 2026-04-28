@@ -14,6 +14,7 @@ const EMOTION_EMOJI = {
   tired: '😴',
 };
 
+<<<<<<< HEAD
 const SAMPLE_PROMPTS = [
   'arre yaar kya scene hai?',
   'mujhe aaj kuch motivation chahiye',
@@ -42,6 +43,8 @@ function rioAlias(model) {
   return MODEL_ALIASES[tail] || 'rio';
 }
 
+=======
+>>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
 function getUserId() {
   let id = localStorage.getItem('rioUserId');
   if (!id) {
@@ -51,6 +54,7 @@ function getUserId() {
   return id;
 }
 
+<<<<<<< HEAD
 function loadSessions() {
   try {
     const raw = localStorage.getItem('rioChatSessions');
@@ -80,6 +84,8 @@ function timeAgo(t) {
   return new Date(t).toLocaleDateString();
 }
 
+=======
+>>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
 function loadModelChoice() {
   try {
     const raw = localStorage.getItem('rioModelChoice');
@@ -89,6 +95,7 @@ function loadModelChoice() {
   }
 }
 
+<<<<<<< HEAD
 function loadInitialTheme() {
   const saved = localStorage.getItem('rioTheme');
   if (saved === 'light' || saved === 'dark') return saved;
@@ -100,6 +107,14 @@ function loadInitialTheme() {
 
 export default function App() {
   const [userId, setUserId] = useState(getUserId);
+=======
+function saveModelChoice(choice) {
+  if (choice) localStorage.setItem('rioModelChoice', JSON.stringify(choice));
+}
+
+export default function App() {
+  const [userId] = useState(getUserId);
+>>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
   const [messages, setMessages] = useState([]);
   const [memories, setMemories] = useState([]);
   const [providers, setProviders] = useState([]);
@@ -107,6 +122,7 @@ export default function App() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+<<<<<<< HEAD
   const [theme, setTheme] = useState(loadInitialTheme);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [sessions, setSessions] = useState(loadSessions);
@@ -120,6 +136,10 @@ export default function App() {
   }, [theme]);
 
   // initial load
+=======
+  const scrollRef = useRef(null);
+
+>>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
   useEffect(() => {
     fetch(`/api/conversation/${userId}`)
       .then((r) => r.json())
@@ -132,6 +152,10 @@ export default function App() {
       .then((d) => {
         const list = (d.providers ?? []).filter((p) => p.available);
         setProviders(list);
+<<<<<<< HEAD
+=======
+        // if saved choice is no longer available, clear it
+>>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
         setChoice((cur) => {
           if (!cur) return list[0] ? { provider: list[0].name, model: list[0].defaultModel } : null;
           const stillAvail = list.find((p) => p.name === cur.provider && p.models.includes(cur.model));
@@ -142,6 +166,7 @@ export default function App() {
   }, [userId]);
 
   useEffect(() => {
+<<<<<<< HEAD
     if (choice) localStorage.setItem('rioModelChoice', JSON.stringify(choice));
   }, [choice]);
 
@@ -166,10 +191,16 @@ export default function App() {
     });
   }, [messages, userId]);
 
+=======
+    saveModelChoice(choice);
+  }, [choice]);
+
+>>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages, loading]);
 
+<<<<<<< HEAD
   // auto-grow textarea
   useEffect(() => {
     const ta = textareaRef.current;
@@ -178,13 +209,20 @@ export default function App() {
     ta.style.height = Math.min(ta.scrollHeight, 160) + 'px';
   }, [input]);
 
+=======
+  // build flat list of (provider, model) options for the dropdown
+>>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
   const modelOptions = useMemo(() => {
     return providers.flatMap((p) =>
       p.models.map((m) => ({
         value: `${p.name}::${m}`,
         provider: p.name,
         model: m,
+<<<<<<< HEAD
         label: rioAlias(m),
+=======
+        label: `${p.label} · ${m}`,
+>>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
       }))
     );
   }, [providers]);
@@ -197,11 +235,19 @@ export default function App() {
     } catch {}
   }
 
+<<<<<<< HEAD
   async function send(textOverride) {
     const text = (textOverride ?? input).trim();
     if (!text || loading) return;
     setError(null);
     if (!textOverride) setInput('');
+=======
+  async function send() {
+    const text = input.trim();
+    if (!text || loading) return;
+    setError(null);
+    setInput('');
+>>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
 
     const userMsg = { role: 'user', content: text, id: `tmp-${Date.now()}` };
     setMessages((prev) => [...prev, userMsg]);
@@ -225,15 +271,31 @@ export default function App() {
         const updated = [...prev];
         const last = updated[updated.length - 1];
         if (last && last.id === userMsg.id) {
+<<<<<<< HEAD
           updated[updated.length - 1] = { ...last, emotion: data.emotion, intent: data.intent };
         }
         return [...updated, { role: 'assistant', content: data.reply, model: data.model }];
       });
+=======
+          updated[updated.length - 1] = {
+            ...last,
+            emotion: data.emotion,
+            intent: data.intent,
+          };
+        }
+        return [...updated, { role: 'assistant', content: data.reply, model: data.model }];
+      });
+
+>>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
       if (data.memorySaved) refreshMemories();
     } catch (e) {
       setError(e.message);
       setMessages((prev) => prev.filter((m) => m.id !== userMsg.id));
+<<<<<<< HEAD
       if (!textOverride) setInput(text);
+=======
+      setInput(text);
+>>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
     } finally {
       setLoading(false);
     }
@@ -244,6 +306,7 @@ export default function App() {
     setMemories((prev) => prev.filter((m) => m.id !== id));
   }
 
+<<<<<<< HEAD
   function newChat() {
     const newId = nanoid();
     localStorage.setItem('rioUserId', newId);
@@ -299,6 +362,8 @@ export default function App() {
     }
   }
 
+=======
+>>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
   function onKeyDown(e) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -306,6 +371,7 @@ export default function App() {
     }
   }
 
+<<<<<<< HEAD
   function editMessage(text) {
     setInput(text);
     const ta = textareaRef.current;
@@ -318,13 +384,18 @@ export default function App() {
     }
   }
 
+=======
+>>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
   function onModelChange(e) {
     const opt = modelOptions.find((o) => o.value === e.target.value);
     if (opt) setChoice({ provider: opt.provider, model: opt.model });
   }
 
   const currentValue = choice ? `${choice.provider}::${choice.model}` : '';
+<<<<<<< HEAD
   const noProviders = modelOptions.length === 0;
+=======
+>>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
 
   return (
     <div className="app">
@@ -335,6 +406,7 @@ export default function App() {
           <span className="brand-sub">your AI dost</span>
         </div>
 
+<<<<<<< HEAD
         <div className="header-controls">
           <div className="model-picker">
             {noProviders ? (
@@ -380,12 +452,30 @@ export default function App() {
           >
             <MemoryIcon />
           </button>
+=======
+        <div className="model-picker">
+          {modelOptions.length === 0 ? (
+            <span className="muted">No providers configured. Add a key to backend/.env</span>
+          ) : (
+            <>
+              <label htmlFor="model-select">Model:</label>
+              <select id="model-select" value={currentValue} onChange={onModelChange}>
+                {modelOptions.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </>
+          )}
+>>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
         </div>
       </header>
 
       <div className="layout">
         <main className="chat">
           <div className="chat-scroll" ref={scrollRef}>
+<<<<<<< HEAD
             {messages.length === 0 && !loading ? (
               <div className="empty">
                 <div className="empty-emoji">👋</div>
@@ -402,18 +492,33 @@ export default function App() {
             ) : (
               messages.map((m, i) => <Bubble key={m.id ?? i} msg={m} onEdit={editMessage} />)
             )}
+=======
+            {messages.length === 0 && !loading && (
+              <div className="empty">
+                <p>arre, hi! 👋</p>
+                <p className="empty-sub">kuch bhi bol — main sun rahi hoon.</p>
+              </div>
+            )}
+            {messages.map((m, i) => (
+              <Bubble key={m.id ?? i} msg={m} />
+            ))}
+>>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
             {loading && <TypingDots />}
           </div>
 
           <div className="composer">
             {error && <div className="error">⚠ {error}</div>}
             <textarea
+<<<<<<< HEAD
               ref={textareaRef}
+=======
+>>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={onKeyDown}
               placeholder="kuch likh… (Enter to send, Shift+Enter for newline)"
               rows={1}
+<<<<<<< HEAD
               disabled={loading || noProviders}
             />
             <button
@@ -424,10 +529,17 @@ export default function App() {
               title="Send"
             >
               <SendIcon />
+=======
+              disabled={loading}
+            />
+            <button onClick={send} disabled={loading || !input.trim() || modelOptions.length === 0}>
+              {loading ? '…' : 'Send'}
+>>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
             </button>
           </div>
         </main>
 
+<<<<<<< HEAD
         {drawerOpen && <div className="backdrop" onClick={() => setDrawerOpen(false)} />}
         <aside className={`sidebar ${drawerOpen ? 'open' : ''}`}>
           <button
@@ -501,12 +613,41 @@ export default function App() {
               </ul>
             )}
           </div>
+=======
+        <aside className="sidebar">
+          <div className="sidebar-head">
+            <h2>Memories</h2>
+            <span className="count">{memories.length}</span>
+          </div>
+          {memories.length === 0 ? (
+            <p className="muted">Rio will remember important things you share.</p>
+          ) : (
+            <ul className="memories">
+              {memories.map((m) => (
+                <li key={m.id}>
+                  <span className="memory-fact">{m.fact}</span>
+                  <span className="memory-meta">
+                    <span className="importance">{'★'.repeat(m.importance)}</span>
+                    <button
+                      className="del"
+                      onClick={() => deleteMemory(m.id)}
+                      title="Forget this"
+                    >
+                      ×
+                    </button>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+>>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
         </aside>
       </div>
     </div>
   );
 }
 
+<<<<<<< HEAD
 function Bubble({ msg, onEdit }) {
   const isUser = msg.role === 'user';
   const emoji = msg.emotion ? EMOTION_EMOJI[msg.emotion] ?? '' : '';
@@ -555,13 +696,27 @@ function Bubble({ msg, onEdit }) {
           </button>
         </div>
       )}
+=======
+function Bubble({ msg }) {
+  const isUser = msg.role === 'user';
+  const emoji = msg.emotion ? EMOTION_EMOJI[msg.emotion] ?? '' : '';
+  return (
+    <div className={`row ${isUser ? 'row-user' : 'row-rio'}`}>
+      <div className={`bubble ${isUser ? 'bubble-user' : 'bubble-rio'}`}>
+        {msg.content}
+      </div>
+>>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
       {isUser && msg.emotion && (
         <div className="chip">
           {emoji} {msg.emotion}
           {msg.intent && <span className="chip-sep"> · {msg.intent}</span>}
         </div>
       )}
+<<<<<<< HEAD
       {!isUser && msg.model && <div className="chip chip-model">{rioAlias(msg.model)}</div>}
+=======
+      {!isUser && msg.model && <div className="chip chip-model">{msg.model}</div>}
+>>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
     </div>
   );
 }
@@ -575,6 +730,7 @@ function TypingDots() {
     </div>
   );
 }
+<<<<<<< HEAD
 
 /* ============== ICONS ============== */
 function SunIcon() {
@@ -647,3 +803,5 @@ function CheckIcon() {
     </svg>
   );
 }
+=======
+>>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
