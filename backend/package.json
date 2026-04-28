@@ -1,0 +1,20 @@
+{
+  "name": "rio-backend",
+  "version": "1.0.0",
+  "description": "Rio AI chatbot backend",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.10.2",
+    "@supabase/supabase-js": "^2.105.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "nanoid": "^5.0.9",
+    "openai": "^4.77.0"
+  }
+}
