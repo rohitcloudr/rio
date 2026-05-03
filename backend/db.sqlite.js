@@ -93,7 +93,9 @@ export async function getTopMemories(userId, limit = 15) {
 }
 
 export async function deleteMemory(id) {
-  stmts.deleteMemory.run(id);
+  // Server may pass either a numeric id (sqlite) or a string id; coerce.
+  const numId = /^\d+$/.test(String(id)) ? Number(id) : id;
+  stmts.deleteMemory.run(numId);
 }
 
 export const driver = 'sqlite';

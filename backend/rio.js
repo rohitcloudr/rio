@@ -8,20 +8,16 @@ import {
 } from './db.js';
 
 const PROVIDERS = {
-  openai: {
-    label: 'OpenAI',
-    apiKey: () => process.env.OPENAI_API_KEY,
-    baseURL: undefined,
-    defaultModel: 'gpt-4o',
-    models: ['gpt-4o', 'gpt-4o-mini'],
-    schemaMode: 'json_schema',
-  },
   groq: {
     label: 'Groq',
     apiKey: () => process.env.GROQ_API_KEY,
     baseURL: 'https://api.groq.com/openai/v1',
     defaultModel: 'llama-3.3-70b-versatile',
-    models: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768'],
+    models: [
+      'llama-3.3-70b-versatile',
+      'llama-3.1-8b-instant',
+      'gemma2-9b-it',
+    ],
     schemaMode: 'json_object',
   },
   gemini: {
@@ -29,7 +25,13 @@ const PROVIDERS = {
     apiKey: () => process.env.GEMINI_API_KEY,
     baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
     defaultModel: 'gemini-2.5-flash',
-    models: ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.0-flash'],
+    models: [
+      'gemini-2.5-flash',
+      'gemini-2.5-pro',
+      'gemini-2.0-flash',
+      'gemini-1.5-flash',
+      'gemini-1.5-pro',
+    ],
     schemaMode: 'json_schema',
   },
   github: {
@@ -37,13 +39,59 @@ const PROVIDERS = {
     apiKey: () => process.env.GITHUB_TOKEN,
     baseURL: 'https://models.github.ai/inference',
     defaultModel: 'openai/gpt-4o',
-    models: ['openai/gpt-4o', 'openai/gpt-4o-mini', 'meta/Meta-Llama-3.1-70B-Instruct'],
+    models: [
+      'openai/gpt-4o',
+      'openai/gpt-4o-mini',
+      'meta/Meta-Llama-3.1-70B-Instruct',
+      'mistral-ai/Mistral-large-2407',
+    ],
     schemaMode: 'json_schema',
   },
 };
 
 function isPlaceholder(key) {
   return !key || key.includes('paste') || key.startsWith('ghp-paste') || key.startsWith('gsk-paste');
+}
+
+// Voice-mode auto cascade — ordered by latency (fastest first), then
+// quality. The /api/chat endpoint walks this list and uses the first
+// provider with a real API key whose call succeeds. If a provider 401s,
+// 429s, or hits a network error we fall through to the next.
+const VOICE_CASCADE = [
+  { provider: 'groq', model: 'llama-3.3-70b-versatile' }, // rio2.1 — fastest premium
+  { provider: 'groq', model: 'llama-3.1-8b-instant' },    // rio2.2 — even faster fallback
+  { provider: 'gemini', model: 'gemini-2.5-flash' },      // rio3.1 — best Hinglish
+  { provider: 'gemini', model: 'gemini-2.0-flash' },      // rio3.3 — Gemini fallback
+  { provider: 'github', model: 'openai/gpt-4o-mini' },    // rio4.2 — last resort
+];
+
+export async function talkToRioAuto(userId, userMessage) {
+  const tried = [];
+  const skipped = [];
+  for (const { provider, model } of VOICE_CASCADE) {
+    const p = PROVIDERS[provider];
+    if (!p) continue;
+    if (isPlaceholder(p.apiKey())) {
+      skipped.push(`${provider} (no API key)`);
+      continue;
+    }
+    try {
+      const result = await talkToRio(userId, userMessage, provider, model);
+      result.autoSelected = { provider, model };
+      result.autoTried = tried;
+      return result;
+    } catch (e) {
+      tried.push({ provider, model, error: e?.message ?? String(e), status: e?.status });
+      // fall through to next provider
+    }
+  }
+  const detail =
+    tried.length > 0
+      ? tried.map((t) => `${t.provider}/${t.model}: ${t.error}`).join(' | ')
+      : `no providers configured (skipped: ${skipped.join(', ') || 'none'})`;
+  const err = new Error(`All voice providers failed. ${detail}`);
+  err.status = tried.some((t) => t.status === 429) ? 429 : 503;
+  throw err;
 }
 
 export function listProviders() {
@@ -130,26 +178,17 @@ function resolveProvider(providerName) {
 }
 
 export async function talkToRio(userId, userMessage, providerName = null, modelOverride = null) {
-<<<<<<< HEAD
   await ensureUser(userId);
-=======
-  ensureUser(userId);
->>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
 
   const { name, config, apiKey } = resolveProvider(providerName);
   const model = modelOverride || config.defaultModel;
 
   const client = new OpenAI({ apiKey, baseURL: config.baseURL });
 
-<<<<<<< HEAD
   const [recent, memories] = await Promise.all([
     getRecentMessages(userId, 10),
     getTopMemories(userId, 15),
   ]);
-=======
-  const recent = getRecentMessages(userId, 10);
-  const memories = getTopMemories(userId, 15);
->>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
 
   const messages = [
     { role: 'system', content: SYSTEM_PROMPT },
@@ -179,22 +218,14 @@ export async function talkToRio(userId, userMessage, providerName = null, modelO
   const raw = completion.choices[0]?.message?.content ?? '{}';
   const parsed = parseAndNormalize(raw);
 
-<<<<<<< HEAD
   await saveMessage({
-=======
-  saveMessage({
->>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
     userId,
     role: 'user',
     content: userMessage,
     emotion: parsed.emotion,
     intent: parsed.intent,
   });
-<<<<<<< HEAD
   await saveMessage({
-=======
-  saveMessage({
->>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
     userId,
     role: 'assistant',
     content: parsed.reply,
@@ -202,11 +233,7 @@ export async function talkToRio(userId, userMessage, providerName = null, modelO
 
   let memorySaved = false;
   if (parsed.memory && typeof parsed.memory.fact === 'string' && parsed.memory.fact.trim()) {
-<<<<<<< HEAD
     await saveMemory({
-=======
-    saveMemory({
->>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
       userId,
       fact: parsed.memory.fact,
       importance: Number(parsed.memory.importance) || 3,

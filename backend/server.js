@@ -6,7 +6,8 @@ import {
   getTopMemories,
   deleteMemory,
 } from './db.js';
-import { talkToRio, listProviders } from './rio.js';
+import { talkToRio, talkToRioAuto, listProviders } from './rio.js';
+import { synthesizeSpeech } from './voice.js';
 
 const app = express();
 app.use(cors());
@@ -21,7 +22,7 @@ app.get('/api/providers', (_req, res) => {
 });
 
 app.post('/api/chat', async (req, res) => {
-  const { userId, message, provider, model } = req.body ?? {};
+  const { userId, message, provider, model, mode } = req.body ?? {};
   if (!userId || typeof userId !== 'string') {
     return res.status(400).json({ error: 'userId required' });
   }
@@ -29,24 +30,36 @@ app.post('/api/chat', async (req, res) => {
     return res.status(400).json({ error: 'message required' });
   }
 
+  const isVoice = mode === 'voice';
+  // Voice mode auto-cascades only when the user hasn't pinned a specific model.
+  // If they picked one in the call overlay, honour it and surface its errors directly.
+  const useAuto = isVoice && !provider;
+
   try {
-    const result = await talkToRio(userId, message.trim(), provider, model);
+    const result = useAuto
+      ? await talkToRioAuto(userId, message.trim())
+      : await talkToRio(userId, message.trim(), provider, model);
     res.json(result);
   } catch (err) {
     console.error('[chat error]', err);
-    if (err?.status === 400) {
-      return res.status(400).json({ error: err.message });
+    const status = (err?.status >= 400 && err?.status < 600) ? err.status : 500;
+    let userMsg;
+    if (status === 429) {
+      userMsg = useAuto
+        ? 'Every voice provider is rate-limited right now. Wait a few seconds and try again.'
+        : `Rate limit / quota hit on ${provider || 'current provider'}. Try a different model from the picker, or wait a bit.`;
+    } else {
+      userMsg = err?.message ?? 'unknown error';
     }
-    if (err?.status === 429) {
-      return res.status(429).json({
-        error: `Rate limit / quota hit on ${provider || 'current provider'}. Try a different model from the picker, or wait a bit.`,
-      });
-    }
-    res.status(500).json({ error: err?.message ?? 'unknown error' });
+    res.status(status).json({
+      error: userMsg,
+      status,
+      provider: provider || null,
+      model: model || null,
+    });
   }
 });
 
-<<<<<<< HEAD
 app.get('/api/conversation/:userId', async (req, res) => {
   try {
     const messages = await getAllMessages(req.params.userId, 50);
@@ -67,9 +80,48 @@ app.get('/api/memory/:userId', async (req, res) => {
   }
 });
 
+app.post('/api/voice/tts', async (req, res) => {
+  const { text, voice, lang } = req.body ?? {};
+  if (!text || typeof text !== 'string' || !text.trim()) {
+    return res.status(400).json({ error: 'text required' });
+  }
+  try {
+    const result = await synthesizeSpeech(text, voice, lang);
+    res.setHeader('Content-Type', 'audio/mpeg');
+    res.setHeader('Cache-Control', 'no-store');
+    if (Buffer.isBuffer(result)) {
+      res.end(result);
+    } else if (result && typeof result.pipe === 'function') {
+      result.pipe(res);
+    } else if (result && typeof result.getReader === 'function') {
+      const reader = result.getReader();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        res.write(Buffer.from(value));
+      }
+      res.end();
+    } else {
+      const buf = Buffer.from(await new Response(result).arrayBuffer());
+      res.end(buf);
+    }
+  } catch (err) {
+    console.error('[tts error]', err);
+    if (err?.status === 400) {
+      return res.status(400).json({ error: err.message });
+    }
+    if (err?.status === 429) {
+      return res.status(429).json({
+        error: 'TTS rate limit / quota hit. Browser fallback voice will be used.',
+      });
+    }
+    res.status(500).json({ error: err?.message ?? 'tts failed' });
+  }
+});
+
 app.delete('/api/memory/:id', async (req, res) => {
-  const id = Number(req.params.id);
-  if (!Number.isInteger(id)) return res.status(400).json({ error: 'invalid id' });
+  const id = req.params.id;
+  if (!id || typeof id !== 'string') return res.status(400).json({ error: 'invalid id' });
   try {
     await deleteMemory(id);
     res.json({ ok: true });
@@ -77,23 +129,6 @@ app.delete('/api/memory/:id', async (req, res) => {
     console.error('[delete memory error]', err);
     res.status(500).json({ error: err?.message ?? 'unknown error' });
   }
-=======
-app.get('/api/conversation/:userId', (req, res) => {
-  const messages = getAllMessages(req.params.userId, 50);
-  res.json({ messages });
-});
-
-app.get('/api/memory/:userId', (req, res) => {
-  const memories = getTopMemories(req.params.userId, 100);
-  res.json({ memories });
-});
-
-app.delete('/api/memory/:id', (req, res) => {
-  const id = Number(req.params.id);
-  if (!Number.isInteger(id)) return res.status(400).json({ error: 'invalid id' });
-  deleteMemory(id);
-  res.json({ ok: true });
->>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
 });
 
 const PORT = Number(process.env.PORT) || 8787;

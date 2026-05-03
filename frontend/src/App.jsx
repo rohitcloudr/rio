@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { nanoid } from 'nanoid';
+import CallOverlay from './voice/CallOverlay.jsx';
+import ModelPickerPopover from './ModelPickerPopover.jsx';
+import { rioAlias } from './modelMeta.js';
 
 const EMOTION_EMOJI = {
   happy: '😊',
@@ -14,7 +17,6 @@ const EMOTION_EMOJI = {
   tired: '😴',
 };
 
-<<<<<<< HEAD
 const SAMPLE_PROMPTS = [
   'arre yaar kya scene hai?',
   'mujhe aaj kuch motivation chahiye',
@@ -22,29 +24,6 @@ const SAMPLE_PROMPTS = [
   'thoda Pune ke baare me bata',
 ];
 
-const MODEL_ALIASES = {
-  'gpt-4o': 'rio1.1',
-  'gpt-4o-mini': 'rio1.2',
-  'llama-3.3-70b-versatile': 'rio2.1',
-  'llama-3.1-8b-instant': 'rio2.2',
-  'mixtral-8x7b-32768': 'rio2.3',
-  'gemini-2.5-flash': 'rio3.1',
-  'gemini-2.5-pro': 'rio3.2',
-  'gemini-2.0-flash': 'rio3.3',
-  'openai/gpt-4o': 'rio4.1',
-  'openai/gpt-4o-mini': 'rio4.2',
-  'meta/Meta-Llama-3.1-70B-Instruct': 'rio4.3',
-};
-
-function rioAlias(model) {
-  if (!model) return '';
-  if (MODEL_ALIASES[model]) return MODEL_ALIASES[model];
-  const tail = String(model).split('/').pop();
-  return MODEL_ALIASES[tail] || 'rio';
-}
-
-=======
->>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
 function getUserId() {
   let id = localStorage.getItem('rioUserId');
   if (!id) {
@@ -54,7 +33,6 @@ function getUserId() {
   return id;
 }
 
-<<<<<<< HEAD
 function loadSessions() {
   try {
     const raw = localStorage.getItem('rioChatSessions');
@@ -84,8 +62,6 @@ function timeAgo(t) {
   return new Date(t).toLocaleDateString();
 }
 
-=======
->>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
 function loadModelChoice() {
   try {
     const raw = localStorage.getItem('rioModelChoice');
@@ -95,37 +71,46 @@ function loadModelChoice() {
   }
 }
 
-<<<<<<< HEAD
+function loadVoiceChoice() {
+  try {
+    const raw = localStorage.getItem('rioVoiceChoice');
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+async function safeJson(r) {
+  const text = await r.text();
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
+const THEMES = ['earth', 'coastal'];
 function loadInitialTheme() {
   const saved = localStorage.getItem('rioTheme');
-  if (saved === 'light' || saved === 'dark') return saved;
-  if (typeof window !== 'undefined' && window.matchMedia) {
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  }
-  return 'light';
+  if (THEMES.includes(saved)) return saved;
+  return 'earth';
 }
 
 export default function App() {
   const [userId, setUserId] = useState(getUserId);
-=======
-function saveModelChoice(choice) {
-  if (choice) localStorage.setItem('rioModelChoice', JSON.stringify(choice));
-}
-
-export default function App() {
-  const [userId] = useState(getUserId);
->>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
   const [messages, setMessages] = useState([]);
   const [memories, setMemories] = useState([]);
   const [providers, setProviders] = useState([]);
   const [choice, setChoice] = useState(loadModelChoice);
+  const [voiceChoice, setVoiceChoice] = useState(loadVoiceChoice);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-<<<<<<< HEAD
   const [theme, setTheme] = useState(loadInitialTheme);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [sessions, setSessions] = useState(loadSessions);
+  const [inCall, setInCall] = useState(false);
   const scrollRef = useRef(null);
   const textareaRef = useRef(null);
 
@@ -136,39 +121,44 @@ export default function App() {
   }, [theme]);
 
   // initial load
-=======
-  const scrollRef = useRef(null);
-
->>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
   useEffect(() => {
     fetch(`/api/conversation/${userId}`)
-      .then((r) => r.json())
-      .then((d) => setMessages(d.messages ?? []))
+      .then(safeJson)
+      .then((d) => setMessages(d?.messages ?? []))
       .catch(() => {});
     refreshMemories();
 
     fetch('/api/providers')
-      .then((r) => r.json())
+      .then(safeJson)
       .then((d) => {
-        const list = (d.providers ?? []).filter((p) => p.available);
+        const list = (d?.providers ?? []).filter((p) => p.available);
         setProviders(list);
-<<<<<<< HEAD
-=======
-        // if saved choice is no longer available, clear it
->>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
+        // No auto-default. choice stays null on first load; user must pick.
+        // If a saved choice points to a model whose key is no longer set,
+        // drop it back to null.
         setChoice((cur) => {
-          if (!cur) return list[0] ? { provider: list[0].name, model: list[0].defaultModel } : null;
+          if (!cur) return null;
           const stillAvail = list.find((p) => p.name === cur.provider && p.models.includes(cur.model));
-          return stillAvail ? cur : list[0] ? { provider: list[0].name, model: list[0].defaultModel } : null;
+          return stillAvail ? cur : null;
+        });
+        setVoiceChoice((cur) => {
+          if (!cur) return null;
+          const stillAvail = list.find((p) => p.name === cur.provider && p.models.includes(cur.model));
+          return stillAvail ? cur : null;
         });
       })
       .catch(() => {});
   }, [userId]);
 
   useEffect(() => {
-<<<<<<< HEAD
     if (choice) localStorage.setItem('rioModelChoice', JSON.stringify(choice));
+    else localStorage.removeItem('rioModelChoice');
   }, [choice]);
+
+  useEffect(() => {
+    if (voiceChoice) localStorage.setItem('rioVoiceChoice', JSON.stringify(voiceChoice));
+    else localStorage.removeItem('rioVoiceChoice');
+  }, [voiceChoice]);
 
   // sync chat session metadata when messages change
   useEffect(() => {
@@ -191,16 +181,10 @@ export default function App() {
     });
   }, [messages, userId]);
 
-=======
-    saveModelChoice(choice);
-  }, [choice]);
-
->>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages, loading]);
 
-<<<<<<< HEAD
   // auto-grow textarea
   useEffect(() => {
     const ta = textareaRef.current;
@@ -209,20 +193,14 @@ export default function App() {
     ta.style.height = Math.min(ta.scrollHeight, 160) + 'px';
   }, [input]);
 
-=======
-  // build flat list of (provider, model) options for the dropdown
->>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
   const modelOptions = useMemo(() => {
     return providers.flatMap((p) =>
       p.models.map((m) => ({
         value: `${p.name}::${m}`,
         provider: p.name,
+        providerLabel: p.label,
         model: m,
-<<<<<<< HEAD
         label: rioAlias(m),
-=======
-        label: `${p.label} · ${m}`,
->>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
       }))
     );
   }, [providers]);
@@ -230,24 +208,16 @@ export default function App() {
   async function refreshMemories() {
     try {
       const r = await fetch(`/api/memory/${userId}`);
-      const d = await r.json();
-      setMemories(d.memories ?? []);
+      const d = await safeJson(r);
+      setMemories(d?.memories ?? []);
     } catch {}
   }
 
-<<<<<<< HEAD
-  async function send(textOverride) {
+  async function send(textOverride, opts = {}) {
     const text = (textOverride ?? input).trim();
     if (!text || loading) return;
     setError(null);
     if (!textOverride) setInput('');
-=======
-  async function send() {
-    const text = input.trim();
-    if (!text || loading) return;
-    setError(null);
-    setInput('');
->>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
 
     const userMsg = { role: 'user', content: text, id: `tmp-${Date.now()}` };
     setMessages((prev) => [...prev, userMsg]);
@@ -255,47 +225,51 @@ export default function App() {
 
     try {
       const body = { userId, message: text };
-      if (choice) {
+      if (opts.voiceMode) {
+        body.mode = 'voice';
+        // If the user picked a specific model in the call overlay, pin it.
+        // Otherwise leave provider/model unset → backend auto-cascades.
+        if (voiceChoice) {
+          body.provider = voiceChoice.provider;
+          body.model = voiceChoice.model;
+        }
+      } else if (choice) {
         body.provider = choice.provider;
         body.model = choice.model;
       }
-      const r = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const data = await r.json();
-      if (!r.ok) throw new Error(data.error ?? 'request failed');
+      let r;
+      try {
+        r = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+      } catch {
+        throw new Error('Cannot reach Rio backend. Make sure the server is running on port 8787.');
+      }
+      const data = await safeJson(r);
+      if (!r.ok) {
+        throw new Error(data?.error ?? `Server error (${r.status}). Try again or pick a different model.`);
+      }
+      if (!data || typeof data.reply !== 'string') {
+        throw new Error('Got an empty response from Rio. Try again.');
+      }
 
       setMessages((prev) => {
         const updated = [...prev];
         const last = updated[updated.length - 1];
         if (last && last.id === userMsg.id) {
-<<<<<<< HEAD
           updated[updated.length - 1] = { ...last, emotion: data.emotion, intent: data.intent };
         }
         return [...updated, { role: 'assistant', content: data.reply, model: data.model }];
       });
-=======
-          updated[updated.length - 1] = {
-            ...last,
-            emotion: data.emotion,
-            intent: data.intent,
-          };
-        }
-        return [...updated, { role: 'assistant', content: data.reply, model: data.model }];
-      });
-
->>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
       if (data.memorySaved) refreshMemories();
+      return data.reply;
     } catch (e) {
       setError(e.message);
       setMessages((prev) => prev.filter((m) => m.id !== userMsg.id));
-<<<<<<< HEAD
       if (!textOverride) setInput(text);
-=======
-      setInput(text);
->>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
+      return null;
     } finally {
       setLoading(false);
     }
@@ -306,7 +280,6 @@ export default function App() {
     setMemories((prev) => prev.filter((m) => m.id !== id));
   }
 
-<<<<<<< HEAD
   function newChat() {
     const newId = nanoid();
     localStorage.setItem('rioUserId', newId);
@@ -362,8 +335,6 @@ export default function App() {
     }
   }
 
-=======
->>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
   function onKeyDown(e) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -371,7 +342,6 @@ export default function App() {
     }
   }
 
-<<<<<<< HEAD
   function editMessage(text) {
     setInput(text);
     const ta = textareaRef.current;
@@ -384,46 +354,39 @@ export default function App() {
     }
   }
 
-=======
->>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
-  function onModelChange(e) {
-    const opt = modelOptions.find((o) => o.value === e.target.value);
-    if (opt) setChoice({ provider: opt.provider, model: opt.model });
-  }
-
-  const currentValue = choice ? `${choice.provider}::${choice.model}` : '';
-<<<<<<< HEAD
   const noProviders = modelOptions.length === 0;
-=======
->>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
 
   return (
     <div className="app">
       <header className="header">
         <div className="brand">
-          <span className="brand-dot" />
+          <RioLogo />
           <h1>Rio</h1>
           <span className="brand-sub">your AI dost</span>
         </div>
 
-<<<<<<< HEAD
         <div className="header-controls">
           <div className="model-picker">
             {noProviders ? (
               <span className="muted">No providers configured</span>
             ) : (
-              <>
-                <label htmlFor="model-select">Model</label>
-                <select id="model-select" value={currentValue} onChange={onModelChange}>
-                  {modelOptions.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-              </>
+              <ModelPickerPopover
+                value={choice}
+                onChange={(next) => setChoice(next)}
+                modelOptions={modelOptions}
+                variant="light"
+              />
             )}
           </div>
+
+          <button
+            className="icon-btn call-btn"
+            onClick={() => setInCall(true)}
+            title="Call Rio (voice mode)"
+            aria-label="Start voice call"
+          >
+            <PhoneIcon />
+          </button>
 
           <button
             className="icon-btn"
@@ -435,47 +398,20 @@ export default function App() {
           </button>
 
           <button
-            className="icon-btn"
-            onClick={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}
-            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-            aria-label="Toggle theme"
+            className="icon-btn theme-btn"
+            onClick={() => setTheme((t) => (t === 'earth' ? 'coastal' : 'earth'))}
+            title={theme === 'earth' ? 'Switch to Coastal palette' : 'Switch to Earth palette'}
+            aria-label="Switch palette"
           >
-            {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+            {theme === 'earth' ? <WaveIcon /> : <LeafIcon />}
           </button>
 
-          <button
-            className="icon-btn mobile-only"
-            onClick={() => setDrawerOpen(true)}
-            title="Show sidebar"
-            aria-label="Show sidebar"
-            style={{ display: 'none' }}
-          >
-            <MemoryIcon />
-          </button>
-=======
-        <div className="model-picker">
-          {modelOptions.length === 0 ? (
-            <span className="muted">No providers configured. Add a key to backend/.env</span>
-          ) : (
-            <>
-              <label htmlFor="model-select">Model:</label>
-              <select id="model-select" value={currentValue} onChange={onModelChange}>
-                {modelOptions.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </>
-          )}
->>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
         </div>
       </header>
 
       <div className="layout">
         <main className="chat">
           <div className="chat-scroll" ref={scrollRef}>
-<<<<<<< HEAD
             {messages.length === 0 && !loading ? (
               <div className="empty">
                 <div className="empty-emoji">👋</div>
@@ -492,54 +428,32 @@ export default function App() {
             ) : (
               messages.map((m, i) => <Bubble key={m.id ?? i} msg={m} onEdit={editMessage} />)
             )}
-=======
-            {messages.length === 0 && !loading && (
-              <div className="empty">
-                <p>arre, hi! 👋</p>
-                <p className="empty-sub">kuch bhi bol — main sun rahi hoon.</p>
-              </div>
-            )}
-            {messages.map((m, i) => (
-              <Bubble key={m.id ?? i} msg={m} />
-            ))}
->>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
             {loading && <TypingDots />}
           </div>
 
           <div className="composer">
             {error && <div className="error">⚠ {error}</div>}
             <textarea
-<<<<<<< HEAD
               ref={textareaRef}
-=======
->>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={onKeyDown}
-              placeholder="kuch likh… (Enter to send, Shift+Enter for newline)"
+              placeholder={inCall ? 'on call with Rio…' : 'kuch likh… (Enter to send, Shift+Enter for newline)'}
               rows={1}
-<<<<<<< HEAD
-              disabled={loading || noProviders}
+              disabled={loading || noProviders || inCall}
             />
             <button
               className="send-btn"
               onClick={() => send()}
-              disabled={loading || !input.trim() || noProviders}
+              disabled={loading || !input.trim() || noProviders || inCall}
               aria-label="Send"
               title="Send"
             >
               <SendIcon />
-=======
-              disabled={loading}
-            />
-            <button onClick={send} disabled={loading || !input.trim() || modelOptions.length === 0}>
-              {loading ? '…' : 'Send'}
->>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
             </button>
           </div>
         </main>
 
-<<<<<<< HEAD
         {drawerOpen && <div className="backdrop" onClick={() => setDrawerOpen(false)} />}
         <aside className={`sidebar ${drawerOpen ? 'open' : ''}`}>
           <button
@@ -613,41 +527,21 @@ export default function App() {
               </ul>
             )}
           </div>
-=======
-        <aside className="sidebar">
-          <div className="sidebar-head">
-            <h2>Memories</h2>
-            <span className="count">{memories.length}</span>
-          </div>
-          {memories.length === 0 ? (
-            <p className="muted">Rio will remember important things you share.</p>
-          ) : (
-            <ul className="memories">
-              {memories.map((m) => (
-                <li key={m.id}>
-                  <span className="memory-fact">{m.fact}</span>
-                  <span className="memory-meta">
-                    <span className="importance">{'★'.repeat(m.importance)}</span>
-                    <button
-                      className="del"
-                      onClick={() => deleteMemory(m.id)}
-                      title="Forget this"
-                    >
-                      ×
-                    </button>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
->>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
         </aside>
       </div>
+
+      <CallOverlay
+        isOpen={inCall}
+        onClose={() => setInCall(false)}
+        onTurn={(text) => send(text, { voiceMode: true })}
+        modelOptions={modelOptions}
+        voiceChoice={voiceChoice}
+        onVoiceChoiceChange={setVoiceChoice}
+      />
     </div>
   );
 }
 
-<<<<<<< HEAD
 function Bubble({ msg, onEdit }) {
   const isUser = msg.role === 'user';
   const emoji = msg.emotion ? EMOTION_EMOJI[msg.emotion] ?? '' : '';
@@ -696,27 +590,13 @@ function Bubble({ msg, onEdit }) {
           </button>
         </div>
       )}
-=======
-function Bubble({ msg }) {
-  const isUser = msg.role === 'user';
-  const emoji = msg.emotion ? EMOTION_EMOJI[msg.emotion] ?? '' : '';
-  return (
-    <div className={`row ${isUser ? 'row-user' : 'row-rio'}`}>
-      <div className={`bubble ${isUser ? 'bubble-user' : 'bubble-rio'}`}>
-        {msg.content}
-      </div>
->>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
       {isUser && msg.emotion && (
         <div className="chip">
           {emoji} {msg.emotion}
           {msg.intent && <span className="chip-sep"> · {msg.intent}</span>}
         </div>
       )}
-<<<<<<< HEAD
       {!isUser && msg.model && <div className="chip chip-model">{rioAlias(msg.model)}</div>}
-=======
-      {!isUser && msg.model && <div className="chip chip-model">{msg.model}</div>}
->>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
     </div>
   );
 }
@@ -730,21 +610,63 @@ function TypingDots() {
     </div>
   );
 }
-<<<<<<< HEAD
 
 /* ============== ICONS ============== */
-function SunIcon() {
+function RioLogo() {
+  // Balance mark — yin-yang inside a soft halo.
+  // Speaks to calm / mind / equilibrium, matching the project's wellness intent.
+  // Mathematical SVG (only circles + arcs) so it renders precisely at every size.
+  // Colors come from --logo-fg / --logo-bg so the mark retints per palette.
   return (
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="4" />
-      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+    <svg
+      className="brand-logo"
+      viewBox="0 0 100 100"
+      width="40"
+      height="40"
+      aria-label="Rio logo"
+      role="img"
+    >
+      {/* outer halo ring */}
+      <circle cx="50" cy="50" r="48" fill="none" stroke="var(--logo-fg)" strokeWidth="1" opacity="0.18" />
+      <circle cx="50" cy="50" r="44" fill="none" stroke="var(--logo-fg)" strokeWidth="0.6" opacity="0.10" />
+
+      {/* yin-yang body — light side */}
+      <circle cx="50" cy="50" r="38" fill="var(--logo-bg)" />
+
+      {/* yin-yang body — dark S-half (right + bottom-left lobe) */}
+      <path
+        d="M 50 12 A 38 38 0 0 1 50 88 A 19 19 0 0 0 50 50 A 19 19 0 0 1 50 12 Z"
+        fill="var(--logo-fg)"
+      />
+
+      {/* light dot inside the dark lobe */}
+      <circle cx="50" cy="69" r="5" fill="var(--logo-bg)" />
+      {/* dark dot inside the light lobe */}
+      <circle cx="50" cy="31" r="5" fill="var(--logo-fg)" />
+
+      {/* four cardinal aura ticks for a subtle meditative feel */}
+      <circle cx="50" cy="3.5" r="1.4" fill="var(--logo-fg)" opacity="0.55" />
+      <circle cx="50" cy="96.5" r="1.4" fill="var(--logo-fg)" opacity="0.55" />
+      <circle cx="3.5" cy="50" r="1.1" fill="var(--logo-fg)" opacity="0.35" />
+      <circle cx="96.5" cy="50" r="1.1" fill="var(--logo-fg)" opacity="0.35" />
     </svg>
   );
 }
-function MoonIcon() {
+
+function LeafIcon() {
   return (
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19.8 2c1 5 .5 10-2.5 13a7 7 0 0 1-6.3 5z" />
+      <path d="M2 21c0-3 1.85-5.36 5.08-6" />
+    </svg>
+  );
+}
+function WaveIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 12c2 0 2-2 4-2s2 2 4 2 2-2 4-2 2 2 4 2 2-2 4-2" />
+      <path d="M2 17c2 0 2-2 4-2s2 2 4 2 2-2 4-2 2 2 4 2 2-2 4-2" />
+      <path d="M2 7c2 0 2-2 4-2s2 2 4 2 2-2 4-2 2 2 4 2 2-2 4-2" />
     </svg>
   );
 }
@@ -763,6 +685,13 @@ function NewChatIcon() {
     </svg>
   );
 }
+function PhoneIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.37 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.33 1.85.57 2.81.7A2 2 0 0 1 22 16.92z" />
+    </svg>
+  );
+}
 function TrashIcon() {
   return (
     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -770,13 +699,6 @@ function TrashIcon() {
       <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
       <path d="M10 11v6M14 11v6" />
       <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-    </svg>
-  );
-}
-function MemoryIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
     </svg>
   );
 }
@@ -803,5 +725,3 @@ function CheckIcon() {
     </svg>
   );
 }
-=======
->>>>>>> 786c0049af409a8f55b2e30d04cb507323e12116
